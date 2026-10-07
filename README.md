@@ -76,12 +76,27 @@ This keeps **AI reasoning separate from operational authority**.
 
 ### Event Ingestion
 
-CEMS accepting and processing an event through the FastAPI application.
+CEMS accepting and processing an enterprise event through the FastAPI application.
 
 ![CEMS API Event Ingestion](screenshots/api-event-ingestion.png)
 
-Additional AWS evidence for the Bedrock agent, SQS/DLQ processing, and ECR container image will be added following final project validation.
+### AI-Assisted Incident Investigation
 
+The bounded Amazon Bedrock operations agent retrieving incident context, stakeholder communication, and live database/SQS/DLQ health without performing remediation.
+
+![CEMS Bedrock Agent Investigation](screenshots/bedrock-agent-investigation.png)
+
+### Asynchronous Processing and Failure Isolation
+
+Amazon SQS configured with an encrypted main processing queue, Dead-Letter Queue, and a five-attempt redrive policy.
+
+![CEMS SQS and DLQ](screenshots/sqs-dlq-resilience.png)
+
+### Container Image in Amazon ECR
+
+The Dockerized CEMS application published to Amazon Elastic Container Registry.
+
+![CEMS Amazon ECR Image](screenshots/ecr-cems-image.png)
 ## Cloud Architecture
 
 The application was containerized with Docker and successfully published to **Amazon ECR**.
