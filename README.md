@@ -1,186 +1,125 @@
 # CEMS — Critical Event Management System
 
-CEMS is an AI-assisted, event-driven Critical Event Management System designed to correlate enterprise events into managed incidents, coordinate stakeholder communication, and maintain a unified operational timeline.
+<p align="center">
+  <img src="screenshots/cems-logo.png" alt="CEMS Critical Event Management System" width="600">
+</p>
 
-The project was designed around a problem I encountered while supporting business-critical transportation technology: during critical events, information can become fragmented across systems, teams, and communication channels. CEMS establishes a coordinated path for managing that information throughout the incident lifecycle.
+CEMS is an **AI-assisted, event-driven critical event management system** designed to correlate enterprise events into incidents, coordinate stakeholder communication, and maintain a unified operational timeline.
 
-## What CEMS Does
+I built CEMS around a problem I encountered while supporting business-critical systems: during critical events, information can become fragmented across systems, teams, and communication channels.
 
-CEMS receives events from enterprise systems and:
+The goal was simple:
 
-- Validates and normalizes incoming event data
-- Correlates related events into managed incidents
-- Maintains incident severity and lifecycle state
-- Stores operational data in PostgreSQL
-- Processes incident activity asynchronously through Amazon SQS
-- Isolates failed processing through a Dead-Letter Queue (DLQ)
-- Determines stakeholder escalation using deterministic business rules
-- Publishes stakeholder notifications through Amazon SNS
-- Accepts and correlates inbound stakeholder responses
-- Maintains a unified incident timeline
-- Uses a bounded Amazon Bedrock AI operations agent for incident investigation and system health monitoring
+> **Create one coordinated path for managing critical-event information from detection through investigation and stakeholder response.**
 
 ## Architecture
 
-CEMS follows a deliberately simplified architecture:
+```mermaid
+flowchart LR
+    A[Enterprise Systems] --> B[FastAPI]
+    B --> C[(PostgreSQL)]
+    B --> D[Amazon SQS]
+    D --> E[CEMS Worker]
+    E --> C
+    E --> F[Amazon SNS]
+    F --> G[Stakeholders]
+    G --> H[Responses]
+    H --> B
+    C --> I[Incident Timeline]
+    J[Amazon Bedrock] --> K[Bounded Agent Tools]
+    K --> C
+    K --> D
+```
 
-**One API → One Database → One Queue → One Worker → One Notification Service → One Bounded AI Agent**
+CEMS follows a deliberately constrained architecture:
 
-Core technologies include:
+**One API • One Database • One Queue • One Worker • One Notification Service • One Bounded AI Agent**
 
-- Python
-- FastAPI
-- PostgreSQL
-- Docker
-- Amazon SQS
-- Amazon SNS
-- Amazon ECR
-- Amazon Bedrock
-- AWS IAM
-- Amazon CloudWatch
-- Terraform
+## What CEMS Does
 
-## Event Processing
+- Validates and normalizes incoming enterprise events
+- Correlates related events into managed incidents
+- Promotes incident severity as conditions change
+- Maintains PostgreSQL as the operational system of record
+- Processes incident activity asynchronously with Amazon SQS
+- Isolates failed processing through a Dead-Letter Queue
+- Applies deterministic stakeholder escalation rules
+- Publishes notifications through Amazon SNS
+- Correlates stakeholder responses back to incidents
+- Maintains a chronological incident timeline
+- Uses Amazon Bedrock for bounded AI-assisted investigation and system health monitoring
 
-Incoming events are validated and normalized before being persisted.
+## Bounded AI Operations
 
-CEMS distinguishes between a **source event** and an **incident**. Multiple related source events can belong to the same managed incident.
+CEMS integrates **Amazon Bedrock with Amazon Nova Lite** to assist with incident investigation.
 
-Incident correlation uses deterministic criteria including event type, location, incident state, and occurrence time. Higher-severity events can promote an existing incident's severity, while resolved or closed incidents are excluded from new correlation.
-
-This keeps critical incident decisions deterministic rather than relying on AI to determine whether events belong together.
-
-## Asynchronous Processing and Resilience
-
-Amazon SQS decouples event ingestion from downstream incident processing.
-
-The worker consumes typed messages and performs incident processing and stakeholder escalation. Failed messages remain available for retry and are eventually isolated in a DLQ after exceeding the configured retry threshold.
-
-The DLQ provides failure isolation without allowing poison messages to continuously disrupt normal processing.
-
-## Stakeholder Communication
-
-Escalation rules determine which stakeholders should receive communications based on event type and severity.
-
-Amazon SNS provides outbound notification capability.
-
-Inbound stakeholder responses are correlated back to the appropriate incident and stored as part of the operational record.
-
-## Unified Incident Timeline
-
-CEMS exposes an incident timeline that combines operational events and stakeholder communications into chronological order.
-
-This creates a single operational view of what occurred during an incident and provides context for both human operators and AI-assisted investigation.
-
-## Bounded AI Operations Agent
-
-CEMS integrates Amazon Bedrock using Amazon Nova Lite.
-
-The AI operations agent is intentionally bounded rather than being given unrestricted system access.
-
-Its available tools allow it to:
+Rather than giving the model unrestricted system access, the agent operates through four controlled tools:
 
 - Retrieve incident context
 - Add investigation notes
 - Check system health
 - Request a controlled worker restart action
 
-The agent cannot arbitrarily execute shell commands, modify IAM, change incident severity, close incidents, alter infrastructure, perform destructive database operations, or send unrestricted communications.
+The agent cannot arbitrarily modify infrastructure, IAM, incident severity, close incidents, execute shell commands, or perform destructive database operations.
 
-This demonstrates an AI design where reasoning capability is separated from operational authority.
+This keeps **AI reasoning separate from operational authority**.
 
-## AWS and Infrastructure as Code
+## Technology
 
-The application was containerized with Docker and successfully published to Amazon ECR.
+**Application:** Python, FastAPI  
+**Data:** PostgreSQL  
+**AWS:** SQS, DLQ, SNS, ECR, Bedrock, IAM, CloudWatch  
+**Infrastructure:** Terraform  
+**Containers:** Docker
 
-Terraform defines the target AWS architecture, including:
+## Implementation Evidence
 
-- VPC
-- Private application and database subnets
-- Security groups
-- Internal Application Load Balancer
-- EC2 application hosts
-- Amazon RDS PostgreSQL
-- SQS and DLQ
-- SNS
-- IAM
-- CloudWatch
+### Event Ingestion
 
-The Terraform configuration was formatted and validated successfully and produced:
+CEMS accepting and processing an event through the FastAPI application.
 
-**Plan: 33 to add, 0 to change, 0 to destroy**
+![CEMS API Event Ingestion](screenshots/api-event-ingestion.png)
 
-The complete EC2/RDS/ALB environment was intentionally not provisioned. The Terraform configuration represents the target cloud architecture while avoiding unnecessary ongoing infrastructure cost for a portfolio project.
+Additional AWS evidence for the Bedrock agent, SQS/DLQ processing, and ECR container image will be added following final project validation.
 
-## Security Approach
+## Cloud Architecture
 
-CEMS was designed around several security principles:
+The application was containerized with Docker and successfully published to **Amazon ECR**.
 
-- Least-privilege IAM
-- Private application and database networking
-- No public database access
-- Restricted security-group communication
-- IMDSv2 for EC2
-- Encrypted database and storage resources
-- AI tool allowlisting
-- Bounded remediation authority
-- Auditable agent activity
-- Secrets excluded from source control
+Terraform defines a private AWS target architecture including VPC networking, EC2 application hosts, an internal Application Load Balancer, RDS PostgreSQL, SQS/DLQ, SNS, IAM, and CloudWatch.
+
+The infrastructure configuration successfully produced:
+
+> **Terraform Plan: 33 to add, 0 to change, 0 to destroy**
+
+The complete EC2/RDS/ALB environment was intentionally **not provisioned** to avoid unnecessary ongoing cloud costs. The Terraform configuration represents the validated target architecture.
 
 ## Engineering Decisions
 
-Several features were intentionally kept deterministic rather than AI-driven.
+Several important CEMS functions remain deterministic rather than AI-driven.
 
-AI assists with investigation and operational context, while incident correlation, severity handling, escalation rules, persistence, and message processing remain controlled by application logic.
+Incident correlation, severity handling, escalation rules, persistence, and message processing are controlled by application logic. AI assists with investigation and operational context.
 
-The architecture also deliberately avoids unnecessary complexity such as Kubernetes, Kafka, multi-region deployment, multiple agents, and additional microservices.
+I also deliberately excluded technologies that did not solve a necessary problem for this version—including Kubernetes, Kafka, multi-region deployment, additional microservices, and multiple AI agents.
 
-The goal was not to use as many technologies as possible. The goal was to design a system whose complexity could be justified.
+The goal was not to build the largest possible technology stack.
 
-## Implementation Status
-
-### Implemented and Tested
-
-- FastAPI event ingestion
-- PostgreSQL persistence
-- Incident correlation
-- Severity promotion
-- Amazon SQS processing
-- Dead-Letter Queue configuration
-- Worker processing
-- Amazon SNS publishing
-- Inbound stakeholder responses
-- Unified incident timeline
-- Amazon Bedrock AI operations agent
-- AI tool guardrails
-- Docker containerization
-- Amazon ECR image publishing
-- Terraform validation and infrastructure planning
-
-### Target Architecture / Future Production Work
-
-A production deployment would additionally require areas such as:
-
-- Complete private AWS service connectivity
-- Production secret management
-- TLS termination
-- Authentication and authorization
-- Automated application bootstrap/deployment
-- Expanded monitoring and alerting
-- Production-scale high availability
+**The goal was to understand why each component belonged in the system.**
 
 ## AI-Assisted Development
 
-AI was used throughout the project as an engineering accelerator to translate architecture decisions into implementation, challenge design assumptions, troubleshoot issues, and accelerate development.
+AI was used as an engineering accelerator throughout development to help translate architecture into implementation, challenge design decisions, troubleshoot failures, and accelerate iteration.
 
-Architecture, requirements, system behavior, security boundaries, testing, troubleshooting, and engineering tradeoffs remained deliberate parts of the development process.
+I remained responsible for defining the requirements, architecture, system behavior, testing, troubleshooting, security boundaries, and engineering tradeoffs.
+
+## Documentation
+
+For a deeper technical explanation of event processing, incident correlation, resilience, security, AWS architecture, AI guardrails, and design tradeoffs:
+
+**[Read the CEMS Architecture Documentation](docs/architecture.md)**
 
 ## Repository Scope
 
-This repository contains the **public technical documentation and evidence for CEMS**.
+This repository contains the public documentation and selected implementation evidence for CEMS.
 
 The full application source code, database migrations, worker implementation, Terraform source, and internal configuration are maintained separately in a private repository.
-
-## Project Evidence
-
-Architecture diagrams, API demonstrations, AWS integration evidence, Terraform validation, and additional technical documentation are included in this repository.
